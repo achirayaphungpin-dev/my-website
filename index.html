@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Thailand PM2.5 Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+  <body class="page-index">
+   <nav class="nav">
+    <div class="brand">แผนที่ PM2.5 ประเทศไทย (Himawari)</div>
+    <div class="links">
+      <a href="./index.html" class="nav-pill active" id="navHome">หน้าหลัก</a>
+      <a href="./gif.html" class="nav-pill" id="navAnim">ไทม์ไลน์</a>
+    </div>
+  </nav>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="controls">
+        <label for="monthSelect">เลือกเดือน:</label>
+        <select id="monthSelect">
+          <option value="NOV">11/2025</option>
+          <option value="DEC" selected>12/2025</option>
+        </select>
+        <label for="daySelect">เลือกวัน:</label>
+        <select id="daySelect"></select>
+        <div id="nationBadge" class="badge">ประเทศ: — µg/m³</div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div id="map" class="map-main"></div>
+      <aside class="panel">
+        <div id="aqTitle" class="panel-title">คุณภาพอากาศ (PM2.5 ค่าเฉลี่ยรายประเทศ)</div>
+        <div class="aq-card">
+          <div id="aqGauge" class="aq-gauge" aria-label="AQ Gauge">
+            <div class="aq-gauge-inner">
+              <div id="aqEmoji" class="aq-emoji">🙂</div>
+              <div id="aqValue" class="aq-value">—</div>
+              <div class="aq-unit">µg/m³</div>
+              <div id="aqLabel" class="aq-label">—</div>
+            </div>
+          </div>
+          <div class="aq-bar">
+            <div class="seg" data-key="c1">0–15</div>
+            <div class="seg" data-key="c2">15.1–25</div>
+            <div class="seg" data-key="c3">25.1–37.5</div>
+            <div class="seg" data-key="c4">37.6–75</div>
+            <div class="seg" data-key="c5">&gt;75.1</div>
+            <div id="aqPointer" class="aq-pointer" title="ตำแหน่งค่า"></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title" id="chartTitle">กราฟรายวันทั้งเดือน: รายประเทศ</div>
+          <div class="chart-wrap">
+            <canvas id="monthChart"></canvas>
+          </div>
+          <button id="btnResetChart" style="margin-top:10px;">รีเซ็ตเป็นรายประเทศ</button>
+        </div>
+
+        
+      </aside>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+  <!-- ✅ ต้องมาก่อน app.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

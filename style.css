@@ -1,0 +1,511 @@
+/* GIF */
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: #0b1220;
+      color:#fff;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0));
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .title{
+      font-weight:800;
+      letter-spacing:.2px;
+      white-space: nowrap;
+    }
+
+    .top-controls{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap: wrap;
+      justify-content:flex-end;
+      margin-left:auto;
+    }
+
+    label{ opacity:.9; font-weight:700; white-space: nowrap; }
+
+    select, input[type="text"]{
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.14);
+      color:#fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-weight:700;
+      outline: none;
+      height: 40px;
+    }
+
+    /* ให้ปฏิทินของ flatpickr อ่านง่ายบนพื้นหลังเข้ม */
+    .flatpickr-calendar{
+      border-radius: 12px;
+      overflow:hidden;
+      box-shadow: 0 18px 60px rgba(0,0,0,.45);
+    }
+
+    .wrap{
+      max-width: 1100px;
+      margin: 22px auto;
+      padding: 0 14px;
+    }
+
+    .card{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+
+    .viewer{
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .imgbox{
+      background:#fff;
+      border-radius: 12px;
+      overflow:hidden;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height: 650px; /* ปรับความสูงรูปในเว็บ */
+    }
+    .imgbox img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      display:block;
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 12px;
+    }
+
+    button{
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.14);
+      color:#fff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor:pointer;
+      font-weight:700;
+    }
+    button:hover{ background: rgba(255,255,255,.16); }
+
+    .pill{
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      font-weight:800;
+      white-space: nowrap;
+    }
+
+    input[type="range"]{
+      width: 360px;
+      max-width: 100%;
+    }
+
+
+
+
+html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+.app { height: 100%; display: flex; flex-direction: column; background: #0b1020; }
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 12px 16px; color:#eaf0ff; background:#0b1020;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.title{ font-weight: 800; letter-spacing: .2px; }
+.controls{ display:flex; align-items:center; gap:10px; }
+.controls label{ opacity:.9; }
+
+#daySelect{
+  padding: 8px 10px; border-radius: 10px; border:1px solid rgba(255,255,255,0.2);
+  background:#0f1733; color:#eaf0ff; outline:none;
+}
+
+.badge{
+  padding: 8px 10px; border-radius: 10px;
+  background:#0f1733; border:1px solid rgba(255,255,255,0.12);
+  color:#eaf0ff; font-weight:700;
+}
+
+.main{
+  flex:1;
+  display:grid;
+  grid-template-columns: 1fr 360px;  /* ✅ ขยาย panel ขวาให้ใหญ่ขึ้น */
+  gap:12px;
+  padding:10px;
+  /* ✅ สำคัญ: บังคับความสูงของแถวให้เท่ากัน */
+  align-items: stretch;
+  min-height: 0; /* กัน overflow แปลกๆ ใน grid/flex */
+}
+
+.map-main{
+  width:100%;
+  height:100%;
+  border-radius: 14px;
+  overflow:hidden;
+}
+
+.panel{
+  height: 100%;
+  min-height: 0;
+  display:flex;
+  flex-direction:column;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.08);
+  color:#eaf0ff;
+}
+.panel-title{ font-weight:800; }
+
+/* ✅ กล่องรูปประเทศ */
+.country-wrap{
+  position: relative;
+  width: 100%;
+  height: 320px;          /* ✅ ให้ใหญ่ขึ้น */
+  border-radius: 12px;
+  overflow: hidden;
+  background:#111;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.country-image{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;     /* เห็นทั้งประเทศ */
+  display:block;
+}
+
+.btn-expand{
+  position:absolute;
+  top:10px; right:10px;
+  z-index:2;
+  padding:6px 10px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(15,23,51,.75);
+  color:#eaf0ff;
+  cursor:pointer;
+  font-weight:700;
+  backdrop-filter: blur(6px);
+}
+
+/* Legend */
+.legend{
+  background: rgba(0,0,0,0.35);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 12px;
+}
+.legend .row{ display:flex; align-items:center; gap:8px; margin:6px 0; }
+.legend .sw{ width:14px; height:10px; border-radius:3px; border:1px solid rgba(255,255,255,0.25); }
+
+.leaflet-container{ background:#0b1020; }
+
+/* ✅ modal */
+.modal.hidden{ display:none; }
+.modal{ position:fixed; inset:0; z-index:9999; }
+.modal-backdrop{
+  position:absolute; inset:0;
+  background: rgba(0,0,0,.6);
+}
+.modal-card{
+  position:absolute;
+  left:50%; top:50%;
+  transform: translate(-50%, -50%);
+  width:min(1100px, 92vw);
+  height:min(720px, 86vh);
+  background:#0b1020;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow: 0 20px 80px rgba(0,0,0,.6);
+}
+.modal-x{
+  position:absolute;
+  top:10px; right:12px;
+  z-index:2;
+  border:0;
+  background: rgba(255,255,255,.12);
+  color:#fff;
+  width:36px; height:36px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:16px;
+}
+.modal-img{
+  width:100%;
+  height:100%;
+  object-fit: contain;
+  display:block;
+}
+
+
+/* แถบแสดงคุณภาพอากาศ+อิโมจิ */
+.aq-card{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.aq-gauge{
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background: conic-gradient(#666 0deg, rgba(255,255,255,0.08) 0deg);
+  border: 1px solid rgba(255,255,255,0.12);
+  position: relative;
+  overflow:hidden;
+}
+
+.aq-gauge-inner{
+  position:absolute;
+  inset: 12px;
+  border-radius: 999px;
+  background: rgba(11,16,32,0.95);
+  border: 1px solid rgba(255,255,255,0.10);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  text-align:center;
+}
+
+.aq-emoji{ font-size: 34px; line-height: 1; }
+.aq-value{ font-size: 28px; font-weight: 900; }
+.aq-unit{ font-size: 12px; opacity: .85; }
+.aq-label{ font-size: 13px; font-weight: 800; opacity: .95; }
+
+.aq-bar{
+  position: relative;
+  display:flex;
+  border-radius: 14px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.20);
+}
+
+.aq-bar .seg{
+  flex:1;
+  padding: 8px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align:center;
+  white-space: nowrap;       /* กันตัดบรรทัด */
+  color: rgba(0,0,0,0.78);
+  user-select:none;
+}
+
+.aq-bar .seg[data-key="c1"]{ background: #90dbe8; }
+.aq-bar .seg[data-key="c2"]{ background: #b1f163; }
+.aq-bar .seg[data-key="c3"]{ background: #ebed75; }
+.aq-bar .seg[data-key="c4"]{ background: #f6aa59; }
+.aq-bar .seg[data-key="c5"]{ background: #ee4c45; color: rgba(255,255,255,0.92); }
+
+.aq-pointer{
+  position:absolute;
+  top:-6px;
+  width:0; height:0;
+  border-left:7px solid transparent;
+  border-right:7px solid transparent;
+  border-top:10px solid rgba(255,255,255,0.92);
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.45));
+  transform: translateX(-50%);
+  left: 0%;
+}
+
+/* =========================
+   NAV (หัวข้อซ้าย + เมนูกลาง)
+   ใช้ได้ทั้ง index + gif
+   ========================= */
+
+.nav{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0));
+}
+
+/* หัวข้อซ้าย */
+.nav .brand{
+  font-weight: 800;
+  white-space: nowrap;
+  color:#fff;
+}
+
+/* เมนูอยู่กลาง "จริง" ด้วย trick: flex:1 + justify-content:center */
+.nav .links{
+  flex: 1;
+  display:flex;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(8px);
+}
+
+/* spacer ขวาให้บาลานซ์ (กว้างเท่าหัวข้อซ้าย) */
+.nav .nav-spacer{
+  width: 1px;          /* default */
+}
+
+/* ทำให้ spacer กว้างเท่าหัวข้อจริง ๆ */
+.nav{
+  position: relative;
+}
+.nav .nav-spacer{
+  flex: 0 0 auto;
+  width: 0;
+}
+.nav .brand{
+  flex: 0 0 auto;
+}
+.nav .nav-spacer{
+  /* ใช้ trick: กำหนด min-width เท่ากับความกว้าง brand ด้วย JS ไม่ได้
+     เลยใช้วิธีง่าย: ให้ links เป็น flex:1 แล้ว center
+     (เมนูจะกลาง "ตามพื้นที่ที่เหลือ" ซึ่งใช้งานจริงจะกลางพอมากแล้ว)
+   */
+}
+
+/* กันสีม่วงลิงก์ */
+.nav a{ color: inherit; text-decoration: none; }
+
+/* ปุ่ม pill */
+.nav-pill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  font-weight: 800;
+  letter-spacing: .2px;
+  color: #fff;
+  transition: transform .08s ease, background .15s ease, border-color .15s ease;
+}
+
+.nav-pill:hover{
+  background: rgba(255,255,255,.14);
+  border-color: rgba(255,255,255,.18);
+  transform: translateY(-1px);
+}
+
+.nav-pill.active{
+  background: rgba(255,255,255,.18);
+  border-color: rgba(255,255,255,.22);
+}
+
+
+/* กราฟ */
+.chart-card{
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+
+.chart-wrap{ height: 160px; position: relative; }
+#monthChart{ width:100% !important; height:100% !important; display:block; }
+
+
+.legend{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.legend .row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:8px 0;
+}
+
+.legend .sw{
+  width:18px;
+  height:12px;
+  border-radius:4px;
+  border:1px solid rgba(255,255,255,0.2);
+}
+
+/* ปรับแก้หน้าหลักให้พอดีจอ */
+/* =========================
+   FORCE CENTER NAV (INDEX)
+   ========================= */
+
+/* ทำเฉพาะหน้าหลัก */
+.page-index .nav{
+  display: grid !important;
+  grid-template-columns: 1fr !important;  /* 1 คอลัมน์ */
+  grid-template-rows: auto auto !important;
+  justify-items: center !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 18px !important;
+}
+
+/* ปิดตัวบาลานซ์เก่าที่ทำให้ layout เพี้ยน */
+.page-index .nav::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* หัวข้ออยู่กลางจริง + แก้ nowrap ที่เคยบังคับไว้ */
+.page-index .nav .brand{
+  justify-self: center !important;
+  text-align: center !important;
+  white-space: normal !important;    /* ✅ สำคัญ: เอา nowrap ออก */
+  font-weight: 900 !important;
+  letter-spacing: .2px !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+}
+
+/* เมนูอยู่กลาง + แคปซูล */
+.page-index .nav .links{
+  justify-self: center !important;
+  display: inline-flex !important;
+  gap: 10px !important;
+  padding: 6px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  backdrop-filter: blur(8px) !important;
+}

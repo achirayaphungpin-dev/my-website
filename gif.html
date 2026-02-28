@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PM2.5 Animation</title>
+
+  <!-- ใช้ style เดียวกับเว็บหลักได้ -->
+  <link rel="stylesheet" href="./style.css">
+
+  <!-- ✅ สำคัญ: CSS ของ flatpickr (ไม่งั้นปฏิทินไม่สวย/เหมือนไม่มา) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+
+<body>
+  <body class="page-gif">
+   <nav class="nav">
+    <div class="brand">แผนที่ PM2.5 ประเทศไทย (Himawari)</div>
+    <div class="links">
+      <a href="./index.html" class="nav-pill" id="navHome">หน้าหลัก</a>
+      <a href="./gif.html" class="nav-pill active" id="navAnim">ไทม์ไลน์</a>
+    </div>
+  </nav>
+
+  <header class="topbar">
+    <div class="title-row">
+      <!-- ลบปุ่มย้อนกลับออกแล้ว -->
+      <div class="title">ไทม์ไลน์ PM2.5 รายวัน</div>
+    </div>
+
+    <div class="top-controls">
+      <label for="monthAnim">เดือน:</label>
+      <select id="monthAnim">
+        <option value="NOV">11/2025</option>
+        <option value="DEC">12/2025</option>
+      </select>
+
+      <label for="datePick">วันที่:</label>
+      <input id="datePick" type="text" readonly style="width:170px; cursor:pointer;" />
+    </div>
+  </header>
+
+  <!-- ที่เหลือเหมือนเดิม -->
+
+  <div class="wrap">
+    <div class="card">
+      <div class="viewer">
+        <div class="imgbox">
+          <img id="frameImg" alt="PM2.5 Frame" />
+        </div>
+
+        <div class="controls">
+          <button id="btnPrev">⟵ ก่อนหน้า</button>
+          <button id="btnPlay">▶ เล่น</button>
+          <button id="btnNext">ถัดไป ⟶</button>
+
+          <label for="speedSel">ความเร็ว:</label>
+          <select id="speedSel">
+            <option value="1200">ช้า</option>
+            <option value="700" selected>กลาง</option>
+            <option value="350">เร็ว</option>
+          </select>
+
+          <label for="slider">วัน:</label>
+          <input id="slider" type="range" min="0" max="0" step="1" value="0" />
+          <span class="pill" id="idxPill">0/0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <script>
+    // ====== DATA (NOV=30, DEC=31) ======
+    const MONTHS = {
+      NOV: { year: 2025, month: 11, days: 30, folder: "NOV" },
+      DEC: { year: 2025, month: 12, days: 31, folder: "DEC" },
+    };
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+
+    function buildFrames({ year, month, days, folder }) {
+      const mm = pad2(month);
+      const out = [];
+      for (let d = 1; d <= days; d++) {
+        const dd = pad2(d);
+        const yyyymmdd = `${year}${mm}${dd}`;
+        out.push({
+          day: yyyymmdd,
+          src: `./images/${folder}/PM_${yyyymmdd}.png`,
+        });
+      }
+      return out;
+    }
+
+    function yyyymmddToDate(yyyymmdd){
+      const y = Number(yyyymmdd.slice(0,4));
+      const m = Number(yyyymmdd.slice(4,6)) - 1;
+      const d = Number(yyyymmdd.slice(6,8));
+      return new Date(y, m, d);
+    }
+
+    function dateToYYYYMMDD(dt){
+      const y = dt.getFullYear();
+      const m = pad2(dt.getMonth()+1);
+      const d = pad2(dt.getDate());
+      return `${y}${m}${d}`;
+    }
+
+    // ====== DOM ======
+    const img = document.getElementById("frameImg");
+    const idxPill = document.getElementById("idxPill");
+    const slider = document.getElementById("slider");
+    const speedSel = document.getElementById("speedSel");
+
+    const btnPrev = document.getElementById("btnPrev");
+    const btnNext = document.getElementById("btnNext");
+    const btnPlay = document.getElementById("btnPlay");
+
+    const monthAnim = document.getElementById("monthAnim");
+    const datePickInput = document.getElementById("datePick");
+
+    // ====== STATE ======
+    let currentMonthKey = monthAnim.value || "NOV";
+    let frames = buildFrames(MONTHS[currentMonthKey]);
+    let idx = 0;
+    let timer = null;
+
+    function stop(){
+      if (timer) clearInterval(timer);
+      timer = null;
+      btnPlay.textContent = "▶ เล่น";
+    }
+
+    function render(i){
+      idx = Math.max(0, Math.min(frames.length - 1, i));
+      const f = frames[idx];
+
+      img.src = f.src;
+      slider.value = String(idx);
+      idxPill.textContent = `${idx+1}/${frames.length}`;
+
+      // sync calendar (ไม่ยิง onChange ซ้ำ)
+      fp.setDate(yyyymmddToDate(f.day), false);
+    }
+
+    function play(){
+      stop();
+      const ms = Number(speedSel.value || 700);
+      btnPlay.textContent = "⏸ หยุด";
+      timer = setInterval(() => {
+        idx = (idx + 1) % frames.length;
+        render(idx);
+      }, ms);
+    }
+
+    function preload(){
+      frames.forEach(f => { const im = new Image(); im.src = f.src; });
+    }
+
+    function initSlider(){
+      slider.max = String(frames.length - 1);
+    }
+
+    function switchMonth(newKey){
+      stop();
+      currentMonthKey = newKey;
+      frames = buildFrames(MONTHS[currentMonthKey]);
+      idx = 0;
+
+      initSlider();
+      preload();
+
+      // update calendar range + default
+      fp.set("minDate", yyyymmddToDate(frames[0].day));
+      fp.set("maxDate", yyyymmddToDate(frames[frames.length-1].day));
+      fp.setDate(yyyymmddToDate(frames[0].day), false);
+
+      render(0);
+    }
+
+    // ====== flatpickr init ======
+    const fp = flatpickr(datePickInput, {
+      dateFormat: "d/m/Y",     // ✅ แสดง 01/12/2025
+      allowInput: false,
+      clickOpens: true,
+      defaultDate: yyyymmddToDate(frames[0].day),
+      minDate: yyyymmddToDate(frames[0].day),
+      maxDate: yyyymmddToDate(frames[frames.length-1].day),
+      onChange: (selectedDates) => {
+        stop();
+        const dt = selectedDates?.[0];
+        if (!dt) return;
+        const yyyymmdd = dateToYYYYMMDD(dt);
+        const foundIdx = frames.findIndex(f => f.day === yyyymmdd);
+        if (foundIdx >= 0) render(foundIdx);
+      }
+    });
+
+    // ====== EVENTS ======
+    slider.addEventListener("input", (e) => { stop(); render(Number(e.target.value)); });
+    btnPrev.addEventListener("click", () => { stop(); render(idx - 1); });
+    btnNext.addEventListener("click", () => { stop(); render(idx + 1); });
+    btnPlay.addEventListener("click", () => { timer ? stop() : play(); });
+    speedSel.addEventListener("change", () => { if (timer) play(); });
+    monthAnim.addEventListener("change", (e) => switchMonth(e.target.value));
+
+    // ====== START ======
+    initSlider();
+    preload();
+    render(0);
+  </script>
+
+</body>
+</html>
