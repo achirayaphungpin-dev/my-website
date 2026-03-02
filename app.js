@@ -4,11 +4,14 @@ const GEOJSON_URLS = {
   DEC: "./data/thailand_pm_province_DEC.geojson",
 };
 
-// ===== GISTDA MapServer =====
-const GISTDA_PM_SERVER = "https://gistdaportal.gistda.or.th/data/rest/services/pm_check/hotspot_pmcheck/MapServer";
-const HOTSPOT_LAYER_ID = 0;
-const DENSITY_LAYER_ID = 1;
+// ===== GISTDA VIIRS WMS (จาก XML Capabilities) =====
+const VIIRS_WMS_URL =
+  "https://api-gateway.gistda.or.th/api/2.0/resources/maps/viirs/1day/wms?api_key=To8FMronbii7P1zE1nCb4xeMKTrhutzVZ5ZRe3s5iGSrSLWF04s2WCY0iy5yuofi";
 
+// Layer ลูกใน XML: <Title>Vallaris Blank</Title><Name>66c9a32c6f57db87573b8035</Name>
+const VIIRS_LAYER_NAME = "66c9a32c6f57db87573b8035";
+
+// ===== COLORS / LEGEND =====
 const COLORS = {
   c1: "#90dbe8",
   c2: "#b1f163",
@@ -27,28 +30,29 @@ function pickColor(pmRaw) {
   return COLORS.c5;
 }
 
-const BREAKS = [
-  { color: COLORS.c1, label: "0.0 – 15.0" },
-  { color: COLORS.c2, label: "15.1 – 25.0" },
-  { color: COLORS.c3, label: "25.1 – 37.5" },
-  { color: COLORS.c4, label: "37.6 – 75.0" },
-  { color: COLORS.c5, label: "> 75.1" },
-];
-
 function getAQStatus(pm) {
   if (pm == null || isNaN(pm)) {
-    return { label: "—", emoji: "❓", color: "#888", max: 75.0 };
+    return { label: "—", emoji: "❓", max: 75.0 };
   }
-  if (pm <= 15.0) return { label: "ดีมาก", emoji: "😄", color: COLORS.c1, max: 75.0 };
-  if (pm <= 25.0) return { label: "ดี", emoji: "🙂", color: COLORS.c2, max: 75.0 };
-  if (pm <= 37.5) return { label: "ปานกลาง", emoji: "😐", color: COLORS.c3, max: 75.0 };
-  if (pm <= 75.0) return { label: "เริ่มกระทบสุขภาพ", emoji: "😷", color: COLORS.c4, max: 75.0 };
-  return { label: "มีผลกระทบต่อสุขภาพ", emoji: "🤢", color: COLORS.c5, max: 75.0 };
+  if (pm <= 15.0) return { label: "ดีมาก", emoji: "😄", max: 75.0 };
+  if (pm <= 25.0) return { label: "ดี", emoji: "🙂", max: 75.0 };
+  if (pm <= 37.5) return { label: "ปานกลาง", emoji: "😐", max: 75.0 };
+  if (pm <= 75.0) return { label: "เริ่มกระทบสุขภาพ", emoji: "😷", max: 75.0 };
+  return { label: "มีผลกระทบต่อสุขภาพ", emoji: "🤢", max: 75.0 };
 }
 
 // ===== MAP =====
 const map = L.map("map", { zoomControl: true }).setView([13.5, 101.0], 6);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, opacity: 0.75 }).addTo(map);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  opacity: 0.75,
+}).addTo(map);
+
+// ✅ ทำ pane ให้ WMS อยู่ “บน” polygon จังหวัด
+map.createPane("hotspotPane");
+map.getPane("hotspotPane").style.zIndex = 650; // สูงกว่า overlayPane (~400)
+map.getPane("hotspotPane").style.pointerEvents = "none"; // กันบังการคลิกจังหวัด
 
 // ===== STATE =====
 let geojsonData = null;
@@ -56,8 +60,7 @@ let mainLayer = null;
 let currentField = null;
 let currentMonth = "DEC";
 let selectedFeature = null; // จังหวัดที่เลือก
-let selectedLayer = null;
-let monthFields = []; // list *_mean ของเดือนปัจจุบัน
+let monthFields = [];
 let monthChart = null;
 
 // ===== HELPERS =====
@@ -79,7 +82,11 @@ function getMeanFieldsFromGeojson(gj) {
   (gj.features || []).slice(0, 80).forEach((f) => {
     Object.keys(f.properties || {}).forEach((k) => set.add(k));
   });
-  return Array.from(set).filter((k) => k.endsWith("_mean")).sort();
+
+  // sort แบบ YYYYMMDD_mean ให้เรียงวันที่ถูก
+  return Array.from(set)
+    .filter((k) => k.endsWith("_mean"))
+    .sort((a, b) => Number(String(a).slice(0, 8)) - Number(String(b).slice(0, 8)));
 }
 
 function formatDateFromField(field) {
@@ -100,13 +107,25 @@ function styleFeature(feature) {
   };
 }
 
+// ✅ National mean (Area-weighted) ใช้ Area_km2
 function computeNationAverageByField(field) {
   if (!geojsonData || !field) return null;
-  const vals = geojsonData.features
-    .map((f) => Number(String(f.properties?.[field] ?? "").replace(",", ".")))
-    .filter((v) => !isNaN(v));
-  if (!vals.length) return null;
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
+
+  let totalWeighted = 0;
+  let totalArea = 0;
+
+  geojsonData.features.forEach((f) => {
+    const p = f.properties || {};
+    const pm = Number(String(p[field] ?? "").replace(",", "."));
+    const area = Number(String(p.Area_km2 ?? "").replace(",", "."));
+    if (!isNaN(pm) && !isNaN(area) && area > 0) {
+      totalWeighted += pm * area;
+      totalArea += area;
+    }
+  });
+
+  if (totalArea === 0) return null;
+  return totalWeighted / totalArea;
 }
 
 function computeNationAverage() {
@@ -128,8 +147,6 @@ function updateAQWidget(pmValue, titleText = null) {
   const pEl = document.getElementById("aqPointer");
   const titleEl = document.getElementById("aqTitle");
 
-  const color = pickColor(pmValue);  // เลือกสีจาก pickColor()
-  
   if (!vEl || !eEl || !lEl || !gEl || !pEl) return;
   if (titleEl && titleText) titleEl.textContent = titleText;
 
@@ -138,7 +155,7 @@ function updateAQWidget(pmValue, titleText = null) {
     vEl.textContent = "—";
     eEl.textContent = "❓";
     lEl.textContent = "—";
-    gEl.style.background = `conic-gradient(#666 0deg, rgba(255,255,255,0.08) 0deg)`;  // สีเทา
+    gEl.style.background = `conic-gradient(#666 0deg, rgba(255,255,255,0.08) 0deg)`;
     pEl.style.left = `0%`;
     return;
   }
@@ -152,12 +169,10 @@ function updateAQWidget(pmValue, titleText = null) {
   const pct = Math.max(0, Math.min(1, pm / max));
   const deg = pct * 360;
 
-  // แทนที่ `color` ที่ได้จาก pickColor ในกราฟวงกลม
+  const color = pickColor(pm);
   gEl.style.background = `conic-gradient(${color} ${deg}deg, rgba(255,255,255,0.08) ${deg}deg)`;
   pEl.style.left = `${Math.max(0, Math.min(100, (pm / max) * 100))}%`;
 }
-
-
 
 // ===== CHART =====
 function buildMonthlySeriesNation(fields) {
@@ -184,14 +199,13 @@ function renderMonthChart(series, labelText) {
   const canvas = document.getElementById("monthChart");
   if (!canvas) return;
 
-  // กันพังถ้าลืมโหลด chart.js
   if (typeof Chart === "undefined") {
     console.warn("Chart.js ยังไม่ได้โหลด (Chart is undefined)");
     return;
   }
 
   const titleEl = document.getElementById("chartTitle");
-  if (titleEl) titleEl.textContent = labelText || "กราฟรายวันทั้งเดือน";
+  if (titleEl) titleEl.textContent = labelText || "กราฟค่าเฉลี่ยรายวัน";
 
   const data = {
     labels: series.labels,
@@ -200,13 +214,13 @@ function renderMonthChart(series, labelText) {
         label: labelText,
         data: series.values,
         spanGaps: true,
-        tension: 0.35, // เส้นโค้งนุ่มขึ้น
+        tension: 0.35,
         pointRadius: 3,
         pointHoverRadius: 6,
         borderWidth: 2,
-        borderColor: "#5db3ff", // ✅ สีเส้นหลัก
-        backgroundColor: "rgba(93,179,255,0.15)", // ✅ สี fill ใต้เส้น
-        fill: true, // ✅ เปิดพื้นที่ใต้กราฟ
+        borderColor: "#5db3ff",
+        backgroundColor: "rgba(93,179,255,0.15)",
+        fill: true,
       },
     ],
   };
@@ -214,19 +228,10 @@ function renderMonthChart(series, labelText) {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { enabled: true },
-    },
+    plugins: { legend: { display: false }, tooltip: { enabled: true } },
     scales: {
-      x: {
-        ticks: { color: "#eaf0ff" },
-        grid: { color: "rgba(255,255,255,0.05)" }, // จางลง
-      },
-      y: {
-        ticks: { color: "#eaf0ff" },
-        grid: { color: "rgba(255,255,255,0.05)" },
-      },
+      x: { ticks: { color: "#eaf0ff" }, grid: { color: "rgba(255,255,255,0.05)" } },
+      y: { ticks: { color: "#eaf0ff" }, grid: { color: "rgba(255,255,255,0.05)" } },
     },
   };
 
@@ -241,13 +246,14 @@ function renderMonthChart(series, labelText) {
 
 function renderChartDefaultNation() {
   if (!monthFields.length) return;
-  renderMonthChart(buildMonthlySeriesNation(monthFields), "กราฟรายวันทั้งเดือน: รายประเทศ");
+  renderMonthChart(buildMonthlySeriesNation(monthFields), "กราฟค่าเฉลี่ยรายวัน : ประเทศไทย");
 }
 
 // ===== DAY SELECT =====
 function buildDaySelect(fields) {
   const sel = document.getElementById("daySelect");
   if (!sel) return;
+
   sel.innerHTML = "";
   fields.forEach((f) => {
     const opt = document.createElement("option");
@@ -255,14 +261,15 @@ function buildDaySelect(fields) {
     opt.textContent = formatDateFromField(f);
     sel.appendChild(opt);
   });
+
   currentField = fields[0];
   sel.value = currentField;
 
-  // เปลี่ยนวัน = อัปเดตสี/legend/badge + widget (ไม่แตะกราฟ)
   sel.onchange = (e) => {
     currentField = e.target.value;
     if (mainLayer) mainLayer.setStyle(styleFeature);
     updateNationBadge();
+
     if (selectedFeature) {
       const p = selectedFeature.properties || {};
       const pm = Number(String(p[currentField] ?? "").replace(",", "."));
@@ -277,18 +284,22 @@ function buildDaySelect(fields) {
 function onEachFeature(feature, layer) {
   layer.on("mouseover", () => layer.setStyle({ weight: 2.2 }));
   layer.on("mouseout", () => mainLayer && mainLayer.resetStyle(layer));
+
   layer.on("click", () => {
     const p = feature.properties || {};
     const nameTH = p.P_NAME_T || "-";
     const nameEN = p.P_NAME_E || "-";
     const pm = Number(String(p[currentField] ?? "").replace(",", "."));
-    selectedFeature = feature;
-    selectedLayer = layer;
 
-    // ✅ วาดกราฟรายจังหวัดทั้งเดือน
+    selectedFeature = feature;
+
+    // ✅ กราฟรายจังหวัดทั้งเดือน + หัวข้อแบบที่ต้องการ
     if (monthFields.length) {
       const sProv = buildMonthlySeriesProvince(selectedFeature, monthFields);
-      renderMonthChart({ labels: sProv.labels, values: sProv.values }, `กราฟรายวันทั้งเดือน: ${sProv.nameTH}`);
+      renderMonthChart(
+        { labels: sProv.labels, values: sProv.values },
+        `กราฟค่าเฉลี่ยรายวัน : ${sProv.nameTH}`
+      );
     }
 
     updateAQWidget(pm, "PM2.5 ค่าเฉลี่ยรายจังหวัด");
@@ -314,12 +325,14 @@ function loadMonth(monthKey) {
     alert("ไม่พบไฟล์ของเดือน: " + monthKey);
     return;
   }
+
   if (mainLayer) {
     map.removeLayer(mainLayer);
     mainLayer = null;
   }
+
   selectedFeature = null;
-  selectedLayer = null;
+
   fetch(url)
     .then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
@@ -332,13 +345,18 @@ function loadMonth(monthKey) {
         alert("ไม่พบคอลัมน์ *_mean ใน GeoJSON ของเดือนนี้");
         return;
       }
-      monthFields = fields; // ✅ สำคัญ: เก็บไว้ใช้กับกราฟจังหวัด
+
+      monthFields = fields;
       buildDaySelect(fields);
+
       mainLayer = L.geoJSON(geojsonData, { style: styleFeature, onEachFeature }).addTo(map);
       map.fitBounds(mainLayer.getBounds());
+
       updateNationBadge();
       updateAQWidget(computeNationAverage(), "PM2.5 ค่าเฉลี่ยรายประเทศ");
-      // ✅ default chart renderChartDefaultNation();
+
+      // ✅ ให้กราฟรายประเทศขึ้นมาตั้งแต่แรก
+      renderChartDefaultNation();
     })
     .catch((err) => {
       console.error(err);
@@ -346,37 +364,29 @@ function loadMonth(monthKey) {
     });
 }
 
-// ===== HOTSPOT + DENSITY =====
+// ===== HOTSPOT + DENSITY (WMS overlay control) =====
 let overlayCtl = null;
 let hotspotGroup = null;
 
 function setupHotspotDensityLayer() {
   hotspotGroup = L.layerGroup();
-  const densityLayer = L.esri.dynamicMapLayer({
-    url: GISTDA_PM_SERVER,
-    layers: [DENSITY_LAYER_ID],
+
+  // หมายเหตุ: จาก XML มี layer ลูกแค่ตัวเดียว จึงยังไม่มี density แยกให้ add เพิ่ม
+  const viirsHotspotWms = L.tileLayer.wms(VIIRS_WMS_URL, {
+    layers: VIIRS_LAYER_NAME,
+    styles: "",
+    format: "image/png",
+    transparent: true,
     opacity: 0.75,
-    format: "png32",
+    version: "1.1.1",
+    uppercase: true,
+    pane: "hotspotPane", // ✅ ให้อยู่บน polygon
   });
 
-  const hotspotLayer = L.esri.featureLayer({
-    url: `${GISTDA_PM_SERVER}/${HOTSPOT_LAYER_ID}`,
-    pointToLayer: function (_geojson, latlng) {
-      return L.circleMarker(latlng, {
-        radius: 1.5,
-        color: "#f93f3f",
-        weight: 1,
-        fillColor: "#ff9a9a",
-        fillOpacity: 0.75,
-      });
-    },
-  });
-
-  hotspotGroup.addLayer(densityLayer);
-  hotspotGroup.addLayer(hotspotLayer);
+  hotspotGroup.addLayer(viirsHotspotWms);
 
   const overlays = {
-    "Hotspot + Density": hotspotGroup,
+    "Hotspot": hotspotGroup, // ✅ ชื่อเดิมตามที่ต้องการ
   };
 
   if (overlayCtl) map.removeControl(overlayCtl);
@@ -385,19 +395,16 @@ function setupHotspotDensityLayer() {
 
 // ===== INIT =====
 (function init() {
-  // month select
   const monthSel = document.getElementById("monthSelect");
   if (monthSel) {
     currentMonth = monthSel.value || "DEC";
     monthSel.onchange = (e) => loadMonth(e.target.value);
   }
 
-  // reset chart button
   const btnReset = document.getElementById("btnResetChart");
   if (btnReset) {
     btnReset.onclick = () => {
       selectedFeature = null;
-      selectedLayer = null;
       renderChartDefaultNation();
       updateAQWidget(computeNationAverage(), "PM2.5 ค่าเฉลี่ยรายประเทศ");
     };
@@ -406,6 +413,13 @@ function setupHotspotDensityLayer() {
   setupHotspotDensityLayer();
   loadMonth(currentMonth);
 })();
+
+
+
+
+
+
+
 
 
 
