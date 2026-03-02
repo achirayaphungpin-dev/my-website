@@ -10,12 +10,13 @@
 
   <!-- ✅ สำคัญ: CSS ของ flatpickr (ไม่งั้นปฏิทินไม่สวย/เหมือนไม่มา) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 </head>
 
 <body>
   <body class="page-gif">
    <nav class="nav">
-    <div class="brand">แผนที่ PM2.5 ประเทศไทย (Himawari)</div>
     <div class="links">
       <a href="./index.html" class="nav-pill" id="navHome">หน้าหลัก</a>
       <a href="./gif.html" class="nav-pill active" id="navAnim">ไทม์ไลน์</a>
@@ -31,8 +32,8 @@
     <div class="top-controls">
       <label for="monthAnim">เดือน:</label>
       <select id="monthAnim">
-        <option value="NOV">11/2025</option>
-        <option value="DEC">12/2025</option>
+        <option value="NOV">พ.ย</option>
+        <option value="DEC">ธ.ค</option>
       </select>
 
       <label for="datePick">วันที่:</label>
@@ -69,8 +70,7 @@
     </div>
   </div>
 
-  <!-- ✅ flatpickr JS -->
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 
   <script>
     // ====== DATA (NOV=30, DEC=31) ======
